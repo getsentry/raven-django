@@ -59,6 +59,7 @@ setup(
     long_description=__doc__,
     packages=find_packages(exclude=("tests", "tests.*",)),
     zip_safe=False,
+    install_requires=['raven'],
     extras_require={
         'tests': tests_require,
         'dev': dev_requires,

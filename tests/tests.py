@@ -23,13 +23,13 @@ from django.template import TemplateSyntaxError
 from django.test import TestCase
 
 from raven.base import Client
-from raven.contrib.django.client import DjangoClient
-from raven.contrib.django.celery import CeleryClient
-from raven.contrib.django.handlers import SentryHandler
-from raven.contrib.django.models import client, get_client, sentry_exception_handler
-from raven.contrib.django.middleware.wsgi import Sentry
-from raven.contrib.django.templatetags.raven import sentry_public_dsn
-from raven.contrib.django.views import is_valid_origin
+from raven_django.client import DjangoClient
+from raven_django.celery import CeleryClient
+from raven_django.handlers import SentryHandler
+from raven_django.models import client, get_client, sentry_exception_handler
+from raven_django.middleware.wsgi import Sentry
+from raven_django.templatetags.raven import sentry_public_dsn
+from raven_django.views import is_valid_origin
 from raven.utils.serializer import transform
 from raven.utils import six
 from raven.utils.six import StringIO
@@ -37,7 +37,7 @@ from raven.utils.six import StringIO
 from django.test.client import Client as TestClient, ClientHandler as TestClientHandler
 from .models import TestModel
 
-settings.SENTRY_CLIENT = 'tests.contrib.django.tests.TempStoreClient'
+settings.SENTRY_CLIENT = 'tests.tests.TempStoreClient'
 
 DJANGO_15 = django.VERSION >= (1, 5, 0)
 
@@ -121,7 +121,7 @@ class ClientProxyTest(TestCase):
 
 class DjangoClientTest(TestCase):
     ## Fixture setup/teardown
-    urls = 'tests.contrib.django.urls'
+    urls = 'tests.urls'
 
     def setUp(self):
         self.raven = get_client()
@@ -153,7 +153,7 @@ class DjangoClientTest(TestCase):
         self.assertEquals(exc['value'], "invalid literal for int() with base 10: 'hello'")
         self.assertEquals(event['level'], logging.ERROR)
         self.assertEquals(event['message'], "ValueError: invalid literal for int() with base 10: 'hello'")
-        self.assertEquals(event['culprit'], 'tests.contrib.django.tests in test_signal_integration')
+        self.assertEquals(event['culprit'], 'tests.tests in test_signal_integration')
 
     def test_view_exception(self):
         self.assertRaises(Exception, self.client.get, reverse('sentry-raise-exc'))
@@ -166,7 +166,7 @@ class DjangoClientTest(TestCase):
         self.assertEquals(exc['value'], 'view exception')
         self.assertEquals(event['level'], logging.ERROR)
         self.assertEquals(event['message'], 'Exception: view exception')
-        self.assertEquals(event['culprit'], 'tests.contrib.django.views in raise_exc')
+        self.assertEquals(event['culprit'], 'tests.views in raise_exc')
 
     def test_user_info(self):
         from django.contrib.auth.models import User
@@ -220,7 +220,7 @@ class DjangoClientTest(TestCase):
         }
 
     def test_request_middleware_exception(self):
-        with Settings(MIDDLEWARE_CLASSES=['tests.contrib.django.middleware.BrokenRequestMiddleware']):
+        with Settings(MIDDLEWARE_CLASSES=['tests.middleware.BrokenRequestMiddleware']):
             self.assertRaises(ImportError, self.client.get, reverse('sentry-raise-exc'))
 
             self.assertEquals(len(self.raven.events), 1)
@@ -232,12 +232,12 @@ class DjangoClientTest(TestCase):
             self.assertEquals(exc['value'], 'request')
             self.assertEquals(event['level'], logging.ERROR)
             self.assertEquals(event['message'], 'ImportError: request')
-            self.assertEquals(event['culprit'], 'tests.contrib.django.middleware in process_request')
+            self.assertEquals(event['culprit'], 'tests.middleware in process_request')
 
     def test_response_middlware_exception(self):
         if django.VERSION[:2] < (1, 3):
             return
-        with Settings(MIDDLEWARE_CLASSES=['tests.contrib.django.middleware.BrokenResponseMiddleware']):
+        with Settings(MIDDLEWARE_CLASSES=['tests.middleware.BrokenResponseMiddleware']):
             self.assertRaises(ImportError, self.client.get, reverse('sentry-no-error'))
 
             self.assertEquals(len(self.raven.events), 1)
@@ -249,10 +249,10 @@ class DjangoClientTest(TestCase):
             self.assertEquals(exc['value'], 'response')
             self.assertEquals(event['level'], logging.ERROR)
             self.assertEquals(event['message'], 'ImportError: response')
-            self.assertEquals(event['culprit'], 'tests.contrib.django.middleware in process_response')
+            self.assertEquals(event['culprit'], 'tests.middleware in process_response')
 
     def test_broken_500_handler_with_middleware(self):
-        with Settings(BREAK_THAT_500=True, INSTALLED_APPS=['raven.contrib.django']):
+        with Settings(BREAK_THAT_500=True, INSTALLED_APPS=['raven_django']):
             client = TestClient(REMOTE_ADDR='127.0.0.1')
             client.handler = MockSentryMiddleware(MockClientHandler())
 
@@ -267,7 +267,7 @@ class DjangoClientTest(TestCase):
             self.assertEquals(exc['value'], 'view exception')
             self.assertEquals(event['level'], logging.ERROR)
             self.assertEquals(event['message'], 'Exception: view exception')
-            self.assertEquals(event['culprit'], 'tests.contrib.django.views in raise_exc')
+            self.assertEquals(event['culprit'], 'tests.views in raise_exc')
 
             event = self.raven.events.pop(0)
 
@@ -277,10 +277,10 @@ class DjangoClientTest(TestCase):
             self.assertEquals(exc['value'], 'handler500')
             self.assertEquals(event['level'], logging.ERROR)
             self.assertEquals(event['message'], 'ValueError: handler500')
-            self.assertEquals(event['culprit'], 'tests.contrib.django.urls in handler500')
+            self.assertEquals(event['culprit'], 'tests.urls in handler500')
 
     def test_view_middleware_exception(self):
-        with Settings(MIDDLEWARE_CLASSES=['tests.contrib.django.middleware.BrokenViewMiddleware']):
+        with Settings(MIDDLEWARE_CLASSES=['tests.middleware.BrokenViewMiddleware']):
             self.assertRaises(ImportError, self.client.get, reverse('sentry-raise-exc'))
 
             self.assertEquals(len(self.raven.events), 1)
@@ -292,7 +292,7 @@ class DjangoClientTest(TestCase):
             self.assertEquals(exc['value'], 'view')
             self.assertEquals(event['level'], logging.ERROR)
             self.assertEquals(event['message'], 'ImportError: view')
-            self.assertEquals(event['culprit'], 'tests.contrib.django.middleware in process_view')
+            self.assertEquals(event['culprit'], 'tests.middleware in process_view')
 
     def test_exclude_modules_view(self):
         exclude_paths = self.raven.exclude_paths
@@ -302,7 +302,7 @@ class DjangoClientTest(TestCase):
         self.assertEquals(len(self.raven.events), 1)
         event = self.raven.events.pop(0)
 
-        self.assertEquals(event['culprit'], 'tests.contrib.django.views in raise_exc')
+        self.assertEquals(event['culprit'], 'tests.views in raise_exc')
         self.raven.exclude_paths = exclude_paths
 
     def test_include_modules(self):
@@ -324,16 +324,6 @@ class DjangoClientTest(TestCase):
         event = self.raven.events.pop(0)
 
         self.assertEquals(event['culprit'], 'error.html')
-
-    # def test_request_in_logging(self):
-    #     resp = self.client.get(reverse('sentry-log-request-exc'))
-    #     self.assertEquals(resp.status_code, 200)
-
-    #     self.assertEquals(len(self.raven.events), 1)
-    #     event = self.raven.events.pop(0)
-
-    #     self.assertEquals(event['culprit'], 'tests.contrib.django.views in logging_request_exc')
-    #     self.assertEquals(event['data']['META']['REMOTE_ADDR'], '127.0.0.1')
 
     # TODO: Python bug #10805
     @pytest.mark.skipif(str('six.PY3'))
@@ -358,7 +348,7 @@ class DjangoClientTest(TestCase):
         self.assertEquals(event['message'], 'test')
 
     def test_404_middleware(self):
-        with Settings(MIDDLEWARE_CLASSES=['raven.contrib.django.middleware.Sentry404CatchMiddleware']):
+        with Settings(MIDDLEWARE_CLASSES=['raven_django.middleware.Sentry404CatchMiddleware']):
             resp = self.client.get('/non-existent-page')
             self.assertEquals(resp.status_code, 404)
 
@@ -377,8 +367,8 @@ class DjangoClientTest(TestCase):
 
     def test_404_middleware_when_disabled(self):
         extra_settings = {
-            'MIDDLEWARE_CLASSES': ['raven.contrib.django.middleware.Sentry404CatchMiddleware'],
-            'SENTRY_CLIENT': 'tests.contrib.django.tests.DisabledTempStoreClient',
+            'MIDDLEWARE_CLASSES': ['raven_django.middleware.Sentry404CatchMiddleware'],
+            'SENTRY_CLIENT': 'tests.tests.DisabledTempStoreClient',
         }
         with Settings(**extra_settings):
             resp = self.client.get('/non-existent-page')
@@ -387,7 +377,7 @@ class DjangoClientTest(TestCase):
 
     def test_invalid_client(self):
         extra_settings = {
-            'SENTRY_CLIENT': 'raven.contrib.django.DjangoClient',  # default
+            'SENTRY_CLIENT': 'raven_django.DjangoClient',  # default
         }
         # Should return fallback client (TempStoreClient)
         client = get_client('nonexistent.and.invalid')
@@ -400,8 +390,8 @@ class DjangoClientTest(TestCase):
 
     def test_response_error_id_middleware(self):
         # TODO: test with 500s
-        with Settings(MIDDLEWARE_CLASSES=['raven.contrib.django.middleware.SentryResponseErrorIdMiddleware',
-                'raven.contrib.django.middleware.Sentry404CatchMiddleware']):
+        with Settings(MIDDLEWARE_CLASSES=['raven_django.middleware.SentryResponseErrorIdMiddleware',
+                'raven_django.middleware.Sentry404CatchMiddleware']):
             resp = self.client.get('/non-existent-page')
             self.assertEquals(resp.status_code, 404)
             headers = dict(resp.items())
@@ -532,12 +522,12 @@ class DjangoClientTest(TestCase):
 
 
 class DjangoTemplateTagTest(TestCase):
-    @mock.patch('raven.contrib.django.DjangoClient.get_public_dsn')
+    @mock.patch('raven_django.DjangoClient.get_public_dsn')
     def test_sentry_public_dsn_no_args(self, get_public_dsn):
         sentry_public_dsn()
         get_public_dsn.assert_called_once_with(None)
 
-    @mock.patch('raven.contrib.django.DjangoClient.get_public_dsn')
+    @mock.patch('raven_django.DjangoClient.get_public_dsn')
     def test_sentry_public_dsn_with_https(self, get_public_dsn):
         sentry_public_dsn('https')
         get_public_dsn.assert_called_once_with('https')
@@ -581,13 +571,13 @@ class CeleryIsolatedClientTest(TestCase):
             secret_key='secret',
         )
 
-    @mock.patch('raven.contrib.django.celery.send_raw')
+    @mock.patch('raven_django.celery.send_raw')
     def test_send_encoded(self, send_raw):
         self.client.send_encoded('foo')
 
         send_raw.delay.assert_called_once_with('foo')
 
-    @mock.patch('raven.contrib.django.celery.send_raw')
+    @mock.patch('raven_django.celery.send_raw')
     def test_without_eager(self, send_raw):
         """
         Integration test to ensure it propagates all the way down
@@ -602,14 +592,14 @@ class CeleryIntegratedClientTest(TestCase):
     def setUp(self):
         self.client = CeleryClient()
 
-    @mock.patch('raven.contrib.django.celery.send_raw_integrated')
+    @mock.patch('raven_django.celery.send_raw_integrated')
     def test_send_encoded(self, send_raw):
         with Settings(INSTALLED_APPS=tuple(settings.INSTALLED_APPS) + ('sentry',)):
             self.client.send_integrated('foo')
 
             send_raw.delay.assert_called_once_with('foo')
 
-    @mock.patch('raven.contrib.django.celery.send_raw_integrated')
+    @mock.patch('raven_django.celery.send_raw_integrated')
     def test_without_eager(self, send_raw):
         """
         Integration test to ensure it propagates all the way down
@@ -640,45 +630,45 @@ class IsValidOriginTestCase(TestCase):
 
 
 class ReportViewTest(TestCase):
-    urls = 'raven.contrib.django.urls'
+    urls = 'raven_django.urls'
 
     def setUp(self):
         self.path = reverse('raven-report')
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin')
+    @mock.patch('raven_django.views.is_valid_origin')
     def test_calls_is_valid_origin_with_header(self, is_valid_origin):
         self.client.post(self.path, HTTP_ORIGIN='http://example.com')
         is_valid_origin.assert_called_once_with('http://example.com')
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin')
+    @mock.patch('raven_django.views.is_valid_origin')
     def test_calls_is_valid_origin_with_header_as_get(self, is_valid_origin):
         self.client.get(self.path, HTTP_ORIGIN='http://example.com')
         is_valid_origin.assert_called_once_with('http://example.com')
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=False))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=False))
     def test_fails_on_invalid_origin(self):
         resp = self.client.post(self.path, HTTP_ORIGIN='http://example.com')
         self.assertEquals(resp.status_code, 403)
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=True))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=True))
     def test_options_call_sends_headers(self):
         resp = self.client.options(self.path, HTTP_ORIGIN='http://example.com')
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(resp['Access-Control-Allow-Origin'], 'http://example.com')
         self.assertEquals(resp['Access-Control-Allow-Methods'], 'GET, POST, OPTIONS')
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=True))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=True))
     def test_missing_data(self):
         resp = self.client.post(self.path, HTTP_ORIGIN='http://example.com')
         self.assertEquals(resp.status_code, 400)
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=True))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=True))
     def test_invalid_data(self):
         resp = self.client.post(self.path, HTTP_ORIGIN='http://example.com',
             data='[1', content_type='application/octet-stream')
         self.assertEquals(resp.status_code, 400)
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=True))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=True))
     def test_sends_data(self):
         resp = self.client.post(self.path, HTTP_ORIGIN='http://example.com',
             data='{}', content_type='application/octet-stream')
@@ -686,7 +676,7 @@ class ReportViewTest(TestCase):
         event = client.events.pop(0)
         self.assertEquals(event, {'auth_header': None})
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=True))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=True))
     def test_sends_authorization_header(self):
         resp = self.client.post(self.path, HTTP_ORIGIN='http://example.com',
             HTTP_AUTHORIZATION='Sentry foo/bar', data='{}', content_type='application/octet-stream')
@@ -694,7 +684,7 @@ class ReportViewTest(TestCase):
         event = client.events.pop(0)
         self.assertEquals(event, {'auth_header': 'Sentry foo/bar'})
 
-    @mock.patch('raven.contrib.django.views.is_valid_origin', mock.Mock(return_value=True))
+    @mock.patch('raven_django.views.is_valid_origin', mock.Mock(return_value=True))
     def test_sends_x_sentry_auth_header(self):
         resp = self.client.post(self.path, HTTP_ORIGIN='http://example.com',
             HTTP_X_SENTRY_AUTH='Sentry foo/bar', data='{}',
@@ -765,7 +755,7 @@ class SentryExceptionHandlerTest(TestCase):
 
     @mock.patch.object(TempStoreClient, 'captureException')
     @mock.patch('sys.exc_info')
-    @mock.patch('raven.contrib.django.models.get_option')
+    @mock.patch('raven_django.models.get_option')
     def test_does_exclude_filtered_types(self, get_option, exc_info, captureException):
         exc_info.return_value = self.exc_info
         get_option.return_value = ['ValueError']
@@ -776,7 +766,7 @@ class SentryExceptionHandlerTest(TestCase):
 
     @mock.patch.object(TempStoreClient, 'captureException')
     @mock.patch('sys.exc_info')
-    @mock.patch('raven.contrib.django.models.get_option')
+    @mock.patch('raven_django.models.get_option')
     def test_ignore_exceptions_with_expression_match(self, get_option, exc_info, captureException):
         exc_info.return_value = self.exc_info
         get_option.return_value = ['builtins.*']
@@ -789,7 +779,7 @@ class SentryExceptionHandlerTest(TestCase):
 
     @mock.patch.object(TempStoreClient, 'captureException')
     @mock.patch('sys.exc_info')
-    @mock.patch('raven.contrib.django.models.get_option')
+    @mock.patch('raven_django.models.get_option')
     def test_ignore_exceptions_with_module_match(self, get_option, exc_info, captureException):
         exc_info.return_value = self.exc_info
         get_option.return_value = ['builtins.ValueError']

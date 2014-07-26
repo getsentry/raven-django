@@ -21,12 +21,12 @@ def handler500(request):
 
 
 urlpatterns = patterns('',
-    url(r'^no-error$', 'tests.contrib.django.views.no_error', name='sentry-no-error'),
-    url(r'^fake-login$', 'tests.contrib.django.views.fake_login', name='sentry-fake-login'),
-    url(r'^trigger-500$', 'tests.contrib.django.views.raise_exc', name='sentry-raise-exc'),
-    url(r'^trigger-500-ioerror$', 'tests.contrib.django.views.raise_ioerror', name='sentry-raise-ioerror'),
-    url(r'^trigger-500-decorated$', 'tests.contrib.django.views.decorated_raise_exc', name='sentry-raise-exc-decor'),
-    url(r'^trigger-500-django$', 'tests.contrib.django.views.django_exc', name='sentry-django-exc'),
-    url(r'^trigger-500-template$', 'tests.contrib.django.views.template_exc', name='sentry-template-exc'),
-    url(r'^trigger-500-log-request$', 'tests.contrib.django.views.logging_request_exc', name='sentry-log-request-exc'),
+    url(r'^no-error$', 'tests.views.no_error', name='sentry-no-error'),
+    url(r'^fake-login$', 'tests.views.fake_login', name='sentry-fake-login'),
+    url(r'^trigger-500$', 'tests.views.raise_exc', name='sentry-raise-exc'),
+    url(r'^trigger-500-ioerror$', 'tests.views.raise_ioerror', name='sentry-raise-ioerror'),
+    url(r'^trigger-500-decorated$', 'tests.views.decorated_raise_exc', name='sentry-raise-exc-decor'),
+    url(r'^trigger-500-django$', 'tests.views.django_exc', name='sentry-django-exc'),
+    url(r'^trigger-500-template$', 'tests.views.template_exc', name='sentry-template-exc'),
+    url(r'^trigger-500-log-request$', 'tests.views.logging_request_exc', name='sentry-log-request-exc'),
 )

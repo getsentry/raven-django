@@ -4,6 +4,9 @@ Raven Django
 .. image:: https://travis-ci.org/getsentry/raven-django.svg?branch=master
     :target: https://travis-ci.org/getsentry/raven-django
 
+Disclaimer: This is work in progress to get Django related things out
+of raven itself. Don't use this yet.
+
 Raven-Django is a Raven extension that provides full out-of-the-box support
 for `Django <https://www.djangoproject.com>`_ framework.
 Raven itself is a Python client for `Sentry <http://www.getsentry.com/>`_.
